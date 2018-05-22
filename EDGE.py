@@ -566,8 +566,8 @@ if __name__ == "__main__":
 
     I = EDGE(X,Y) # Estimated Mutual Information between X and Y using EDGE method
     I.backward(one)
-    print(X.grad)
-    print(Y.grad)
+    print("X gradients:", X.grad)
+    print("Y gradients:", Y.grad)
     print ('Independent Datasets: ', I)
 
 	# Dependent Datasets

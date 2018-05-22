@@ -4,3 +4,5 @@ checkpoints
 datasets/MNIST
 
 experiments.py
+EDGE
+__pycache__

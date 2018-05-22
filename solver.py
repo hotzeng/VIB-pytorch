@@ -14,6 +14,7 @@ from utils import cuda, Weight_EMA_Update
 from datasets.datasets import return_data
 from model import ToyNet
 from pathlib import Path
+from EDGE_grad import EDGE
 
 class Solver(object):
 
@@ -87,8 +88,22 @@ class Solver(object):
                 y = Variable(cuda(labels, self.cuda))
                 (mu, std), logit = self.toynet(x)
 
-                class_loss = F.cross_entropy(logit,y).div(math.log(2))
-                info_loss = -0.5*(1+2*std.log()-mu.pow(2)-std.pow(2)).sum(1).mean().div(math.log(2))
+                # Sample x and z to estimate the mutual information, by yuzeng
+                N_x = x.shape[0]
+                x = x.view(N_x, -1)
+                D_x = x.shape[1]
+                index_x = torch.rand(self.batch_size) * float(N_x)
+                index_x = index_x.int()
+                #x_sample = x[index_x.data.numpy().tolist()]
+                x_sample = x
+
+                z_sample = torch.normal(mu, std)
+
+                # Redefine the losses with MI estimation by yuzeng
+                #class_loss = F.cross_entropy(logit,y).div(math.log(2))
+                class_loss = EDGE.apply(logit, y)
+                info_loss = EDGE.apply(z_sample, x_sample)
+                #info_loss = -0.5*(1+2*std.log()-mu.pow(2)-std.pow(2)).sum(1).mean().div(math.log(2))
                 total_loss = class_loss + self.beta*info_loss
 
                 izy_bound = math.log(10,2) - class_loss

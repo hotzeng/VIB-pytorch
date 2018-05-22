@@ -38,7 +38,7 @@ if __name__ == "__main__":
     parser.add_argument('--seed', default = 1, type=int, help='random seed')
     parser.add_argument('--num_avg', default = 12, type=int, help='the number of samples when\
             perform multi-shot prediction')
-    parser.add_argument('--batch_size', default = 100, type=int, help='batch size')
+    parser.add_argument('--batch_size', default = 1000, type=int, help='batch size')
     parser.add_argument('--env_name', default='main', type=str, help='visdom env name')
     parser.add_argument('--dataset', default='MNIST', type=str, help='dataset name')
     parser.add_argument('--dset_dir', default='datasets', type=str, help='dataset directory path')
@@ -48,6 +48,7 @@ if __name__ == "__main__":
     parser.add_argument('--cuda',default=True, type=str2bool, help='enable cuda')
     parser.add_argument('--mode',default='train', type=str, help='train or test')
     parser.add_argument('--tensorboard',default=False, type=str2bool, help='enable tensorboard')
+    parser.add_argument('--alpha',default=1.0, type=float, help='coefficient for updating gradient of X')
     args = parser.parse_args()
 
     main(args)
