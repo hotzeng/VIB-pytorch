@@ -102,13 +102,13 @@ class Solver(object):
                 y = y.float() / y.max().float()
                 logit = logit.float() / logit.max().float()
 
-                x_sample = x_sample.float() / x_sample.max().float()
-                z_sample = z_sample.float() / z_sample.max().float()
+                #x_sample = x_sample.float() / x_sample.max().float()
+                #z_sample = z_sample.float() / z_sample.max().float()
 
                 # Redefine the losses with MI estimation by yuzeng
                 #class_loss = F.cross_entropy(logit,y).div(math.log(2))
-                class_loss = EDGE.apply(logit, y)
                 info_loss = EDGE.apply(z_sample, x_sample)
+                class_loss = EDGE.apply(logit, y)
                 #info_loss = -0.5*(1+2*std.log()-mu.pow(2)-std.pow(2)).sum(1).mean().div(math.log(2))
                 total_loss = class_loss + self.beta*info_loss
 

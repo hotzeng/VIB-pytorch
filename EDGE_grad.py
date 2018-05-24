@@ -40,21 +40,21 @@ class EDGE(torch.autograd.Function):
             std_X = np.array([np.std(list(set(np.squeeze( X[:,[i]] ).tolist()))) for i in range(dim_X)])
             std_Y = np.array([np.std(list(set(np.squeeze( Y[:,[i]] ).tolist()))) for i in range(dim_Y)])
             
-            # random coeffs 
+            # random coeffs, changed by yuzeng 
             Tx=np.random.rand(1,dim_X)
             cf_X = Tx[0]*(eps_u - eps_l) + eps_l
             Ty=np.random.rand(1,dim_Y)
             cf_Y = Ty[0]*(eps_u - eps_l) + eps_l
-            
-            # Random Shifts
-            Tx = np.random.rand(1,dim_X)
-            b_X = 10.0*Tx[0]*std_X
-            Ty = np.random.rand(1,dim_Y)
-            b_Y = 10.0*Ty[0]*std_Y
-            
+  
             # Random espilons
             eps_X = std_X * cf_X
             eps_Y = std_Y * cf_Y
+
+            # Random Shifts, changed by yueng
+            Tx = np.random.rand(1,dim_X)
+            b_X = 10.0*Tx[0]*eps_X
+            Ty = np.random.rand(1,dim_Y)
+            b_Y = 10.0*Ty[0]*eps_Y
             
             return (eps_X,eps_Y,b_X,b_Y)
         
@@ -127,6 +127,9 @@ class EDGE(torch.autograd.Function):
             # Find the appropriate interval
             f_l, f_u = 0, 3.0
             err = 0
+
+            # store the series of f_m, changed by yuzeng 
+            f_m_list = []
             while  (f_l < C_balance_l)  or ( C_balance_u < f_u): 
                 # If cannot find the right interval make error
                 err +=1
@@ -144,12 +147,13 @@ class EDGE(torch.autograd.Function):
                 b_Y = b_Y_temp * 1.0*t_m / pow(N,1.0/(2*dim))
 
                 (f_m, CX, CY, CXY, N_temp) = Hash(X,Y, t_m,eps_X,eps_Y,b_X,b_Y,Ni_max)
+                f_m_list.append(f_m)
                 
                 not_in_interval = (f_l < C_balance_l) or (C_balance_u < f_u) 
-                if f_m < 1 and not_in_interval:
+                if f_m < 0.75 and not_in_interval:
                     t_l=t_m
                     f_l=f_m
-                elif f_m > 1 and not_in_interval:
+                elif f_m > 1.45 and not_in_interval:
                     t_u=t_m
                     f_u=f_m
             
