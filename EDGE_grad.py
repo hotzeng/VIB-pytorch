@@ -37,8 +37,8 @@ class EDGE(torch.autograd.Function):
             # Find dimensions
             dim_X , dim_Y  = X.shape[1], Y.shape[1]
             
-            std_X = np.array([np.std(X[:,[i]]) for i in range(dim_X)])
-            std_Y = np.array([np.std(Y[:,[i]]) for i in range(dim_Y)])
+            std_X = np.array([np.std(list(set(np.squeeze( X[:,[i]] ).tolist()))) for i in range(dim_X)])
+            std_Y = np.array([np.std(list(set(np.squeeze( Y[:,[i]] ).tolist()))) for i in range(dim_Y)])
             
             # random coeffs 
             Tx=np.random.rand(1,dim_X)
@@ -61,7 +61,10 @@ class EDGE(torch.autograd.Function):
         # Define H1 (LSH)
         def H1(X,b,eps):
             # Compute X_tilde, the mappings of X using H_1 (floor function)
-            X_te = 1.0*(X+b)/eps
+            #if abs(eps).min() == 0:
+            #    raise ValueError('Error: The norm of eps is 0', eps) 
+            nonzero = eps > 0
+            X_te = 1.0*(X[nonzero]+b[nonzero])/eps[nonzero]
             X_t = np.floor(X_te)
             R = tuple(X_t.tolist())
             return R
@@ -106,10 +109,10 @@ class EDGE(torch.autograd.Function):
             N_temp = [len(S) for S in CXY.values()]
             f = max(N_temp)/(Ni_max*pow(N,2.0/4))
             
-            return (f, CX, CY, CXY)
+            return (f, CX, CY, CXY, N_temp)
         
         
-        def find_interval(X,Y, eps_X_temp,eps_Y_temp,b_X,b_Y,t_l, t_u, Ni_max = 1):
+        def find_interval(X,Y, eps_X_temp,eps_Y_temp,b_X_temp,b_Y_temp,t_l, t_u, Ni_max = 1):
         
             # Num of Samples
             N = X.shape[0]
@@ -127,16 +130,20 @@ class EDGE(torch.autograd.Function):
             while  (f_l < C_balance_l)  or ( C_balance_u < f_u): 
                 # If cannot find the right interval make error
                 err +=1
+                if err > 190:
+                    a = 0
                 if err > 200:
-                    raise ValueError('Error: Correct interval cannot be found. Try modifying t_l and t_u', t_l,t_u)  
-                
+                    raise ValueError('Error: Correct interval cannot be found. Try modifying t_l and t_u', t_l,t_u) 
                 t_m = (t_u+t_l)/2
                 
                 # Normalize epsilons
                 eps_X = eps_X_temp * 1.0*t_m / pow(N,1.0/(2*dim))
                 eps_Y = eps_Y_temp * 1.0*t_m / pow(N,1.0/(2*dim))
                 
-                (f_m, CX, CY, CXY) = Hash(X,Y, t_m,eps_X,eps_Y,b_X,b_Y,Ni_max)
+                b_X = b_X_temp * 1.0*t_m / pow(N,1.0/(2*dim))
+                b_Y = b_Y_temp * 1.0*t_m / pow(N,1.0/(2*dim))
+
+                (f_m, CX, CY, CXY, N_temp) = Hash(X,Y, t_m,eps_X,eps_Y,b_X,b_Y,Ni_max)
                 
                 not_in_interval = (f_l < C_balance_l) or (C_balance_u < f_u) 
                 if f_m < 1 and not_in_interval:
@@ -157,11 +164,14 @@ class EDGE(torch.autograd.Function):
             # Num of Samples and dim
             N = X.shape[0]
             d = X.shape[1]
+
+            # Find dimensions
+            dim_X , dim_Y  = X.shape[1], Y.shape[1]
             
             # Parameter: Lower bound for Ni and Mj for being counted:
             mini = Ni_min * pow(N,2.0/4)
             
-            (f_m, CX, CY, CXY) = Hash(X,Y,t,eps_X,eps_Y,b_X,b_Y,Ni_max)
+            (f_m, CX, CY, CXY, N_temp) = Hash(X,Y,t,eps_X,eps_Y,b_X,b_Y,Ni_max)
             
             # Computing Mutual Information Function
             I = 0
@@ -177,12 +187,20 @@ class EDGE(torch.autograd.Function):
             # Compute MI
             I = 1.0* I / N_c
             
-            ## Compute gradient matrix (N by d)
+           	## Compute gradient matrix (N by d)
+
             Grad_mat= np.zeros((N,d))
             
             # Compute X_tilde and Y_tilde, the mappings of X and Y using H_1 (floor function)
-            X_tf, Y_tf = 1.0*(X+b_X)/eps_X, 1.0*(Y+b_Y)/eps_Y
+            X_non_zero = eps_X>0
+            Y_non_zero = eps_Y>0
+            
+            X_tf,Y_tf=np.zeros([N,dim_X]),np.zeros([N,dim_Y])
+            X_t,Y_t=np.zeros([N,dim_X]),np.zeros([N,dim_Y])
+            
+            X_tf, Y_tf = 1.0*(X[:, X_non_zero]+b_X[X_non_zero])/eps_X[X_non_zero], 1.0*(Y[:,Y_non_zero]+b_Y[Y_non_zero])/eps_Y[Y_non_zero]
             X_t, Y_t= np.floor(X_tf), np.floor(Y_tf)
+            
             
             # initialize bakward and forward buckets
             dw_b,dw_f = np.zeros(d),np.zeros(d)
@@ -190,83 +208,87 @@ class EDGE(torch.autograd.Function):
             # initialize current, forward and backward Delta functions
             grad_Ni, grad_Ni_b_vec, grad_Ni_f_vec = np.zeros(d),np.zeros(d), np.zeros(d)
             
+            t_count=0
+            
             # Compute gradient for the bucket representatives
             for r in CX.values():
-                # pick the index of representatives
+            	# pick the index of representatives
                 i = r[0]
                 # compute the gradiant with respect to X_i
                 Grad_vec = np.zeros((1,d))
-           
+                
                 # for random points in each bucket r
                 q = np.random.choice(r, min(r_grad,len(r)), replace=False) 
-
-                # for all of the points in each bucket r
+                
                 for i in q:
-            	    X_l, Y_l = H1(X[i],b_X,eps_X), H1(Y[i],b_Y,eps_Y)
-            	    
-            	    Ni = len(CX[X_l])
-            	    Mj = len(CY[Y_l])
-            	    Nij = len(CXY[(X_l,Y_l)])		
-            
-            	    # All current and neighbor bucket colllisions: 
-            	    #      backward and forward buckets Ni and Nij
-            	    direct = np.zeros(d)
-            	    for z in range(d):
-            
-            	        # current bucket gradient
-            	        grad_Ni=Delta(X_tf[i,z]-X_t[i,z]) - Delta(X_tf[i,z]-X_t[i,z]-1)
-            	        Grad_vec += 1.0/math.log(2)*grad_Ni*(1.0/Nij-1.0/Ni)
-            
-            	        # Neighbors:
-            	        direct[z] = 1
-            	        # Backward buckets in each dimension
-            	        X_temp = X_t[i]-direct
-            	        X_l = tuple(X_temp.tolist())
-            	        grad_Ni_b_vec[z] = -Delta(X_tf[i,z]-X_t[i,z])
-            	        
-            	        # compute dw_b
-            	        if (X_l,Y_l) in CXY:
-            	            Ni_b= len(CX[X_l])
-            	            Nij_b =len(CXY[(X_l,Y_l)])
-            	            dw_b[z]=1.0/math.log(2)*(1.0/Nij_b-1.0/Ni_b)
-            	        
-            	        else:
-            	            if X_l in CX:
-            	                Ni_b= len(CX[X_l])
-            	            else: 
-            	                Ni_b=0		
-            	            dw_b[z] = math.log(1.0*N/(Mj*(Ni_b+1)))
-            
-            	        # Forward buckets in each dimension
-            	        X_temp = X_t[i]+direct
-            	        X_l = tuple(X_temp.tolist())
-            	        grad_Ni_f_vec[z] = Delta(X_tf[i,z]-X_t[i,z]-1)
-            	        
-            	        # compute dw_f
-            	        if (X_l,Y_l) in CXY:
-            	            Ni_f= len(CX[X_l])
-            	            Nij_f =len(CXY[(X_l,Y_l)])
-            	            dw_f[z]=1.0/math.log(2)*(1.0/Nij_f-1.0/Ni_f)
-            	        
-            	        else:
-            	            if X_l in CX:
-            	                Ni_f= len(CX[X_l])
-            	            else: 
-            	                Ni_f=0		
-            	            dw_f[z] = math.log(1.0*N/(Mj*(Ni_f+1)))
-            
-            	        direct[z] = 0
-            	    
+                    t_count=t_count+1
+                    X_l, Y_l = H1(X[i],b_X,eps_X), H1(Y[i],b_Y,eps_Y)
+                    
+                    Ni = len(CX[X_l])
+                    Mj = len(CY[Y_l])
+                    Nij = len(CXY[(X_l,Y_l)])		
+                    
+                    # All current and neighbor bucket colllisions: 
+                    #      backward and forward buckets Ni and Nij
+                    direct = np.zeros(d)
+                        
+                    Rd = np.asarray(range(d))
+                    for z in Rd[X_non_zero]:
+                    
+                        # current bucket gradient
+                        grad_Ni=Delta(X_tf[i,z]-X_t[i,z]) - Delta(X_tf[i,z]-X_t[i,z]-1)
+                        Grad_vec += 1.0/math.log(2)*grad_Ni*(1.0/Nij-1.0/Ni)
+                    
+                        # Neighbors:
+                        direct[z] = 1
+                        # Backward buckets in each dimension
+                        X_temp = X_t[i]-direct
+                        X_l = tuple(X_temp.tolist())
+                        grad_Ni_b_vec[z] = -Delta(X_tf[i,z]-X_t[i,z])
+                        
+                        # compute dw_b
+                        if (X_l,Y_l) in CXY:
+                            Ni_b= len(CX[X_l])
+                            Nij_b =len(CXY[(X_l,Y_l)])
+                            dw_b[z]=1.0/math.log(2)*(1.0/Nij_b-1.0/Ni_b)
+                        
+                        else:
+                            if X_l in CX:
+                                Ni_b= len(CX[X_l])
+                            else: 
+                                Ni_b=0		
+                            dw_b[z] = math.log(1.0*N/(Mj*(Ni_b+1)))
+                    
+                        # Forward buckets in each dimension
+                        X_temp = X_t[i]+direct
+                        X_l = tuple(X_temp.tolist())
+                        grad_Ni_f_vec[z] = Delta(X_tf[i,z]-X_t[i,z]-1)
+                        
+                        # compute dw_f
+                        if (X_l,Y_l) in CXY:
+                            Ni_f= len(CX[X_l])
+                            Nij_f =len(CXY[(X_l,Y_l)])
+                            dw_f[z]=1.0/math.log(2)*(1.0/Nij_f-1.0/Ni_f)
+                        
+                        else:
+                            if X_l in CX:
+                                Ni_f= len(CX[X_l])
+                            else: 
+                                Ni_f=0		
+                            dw_f[z] = math.log(1.0*N/(Mj*(Ni_f+1)))
+                    
+                        direct[z] = 0
+                    
                     # backward bucket gradient
-            	    back_grad_vec = grad_Ni_b_vec*dw_b
-            	    Grad_vec += back_grad_vec
+                    back_grad_vec = grad_Ni_b_vec*dw_b
+                    Grad_vec += back_grad_vec
+                    
+                    # forward bucket gradient
+                    forward_grad_vec = grad_Ni_f_vec*dw_f
+                    Grad_vec += forward_grad_vec
             
-            	    # forward bucket gradient
-            	    forward_grad_vec = grad_Ni_f_vec*dw_f
-            	    Grad_vec += forward_grad_vec
-            	
-                # set all of the gradients corresponding to the nodes in bucket r
-                Grad_mat[r]=1.0*Grad_vec/N
+            	    # set all of the gradients corresponding to the nodes in bucket r
+                    Grad_mat[r]=1.0*Grad_vec/N
             
             return (I,Grad_mat)
         
@@ -296,9 +318,9 @@ class EDGE(torch.autograd.Function):
             #L = dim+1
             L=min(4, dim+1)
             
-            # Num of Samples
+            # Num of Samples, increase t_u, changed by yuzeng
             N = X.shape[0]
-            t_l,t_u = 0.1, 40
+            t_l,t_u = 0.1, 200
             
             # Use less number of samples for learning the interval
             N_t=1000
@@ -308,10 +330,10 @@ class EDGE(torch.autograd.Function):
                 X_test,Y_test=X,Y
             
             # get eps and b:
-            (eps_X_temp,eps_Y_temp,b_X,b_Y) = gen_eps(X_test,Y_test)
+            (eps_X_temp,eps_Y_temp,b_X_temp,b_Y_temp) = gen_eps(X_test,Y_test)
             
             # Find the appropriate Interval
-            (t_l,t_u) = find_interval(X_test,Y_test, eps_X_temp,eps_Y_temp,b_X,b_Y,t_l, t_u, Ni_max)
+            (t_l,t_u) = find_interval(X_test,Y_test, eps_X_temp,eps_Y_temp,b_X_temp, b_Y_temp,t_l, t_u, Ni_max)
             
             # Find a range of indices
             l = t_u - t_l
@@ -334,6 +356,9 @@ class EDGE(torch.autograd.Function):
             	# Normalize epsilons
                 eps_X = eps_X_temp * 1.0*T[i] / pow(N,1.0/(2*dim))
                 eps_Y = eps_Y_temp * 1.0*T[i] / pow(N,1.0/(2*dim))
+
+                b_X = b_X_temp * 1.0*T[i] / pow(N,1.0/(2*dim))
+                b_Y = b_Y_temp * 1.0*T[i] / pow(N,1.0/(2*dim))
             
                 (I_vec[i], Grad_vec[i,:,:]) = Compute_MI(X,Y,U,T[i],eps_X,eps_Y,b_X,b_Y,Ni_min,Ni_max)
             

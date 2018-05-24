@@ -398,34 +398,37 @@ def EDGE(X,Y,U=20):
 
 if __name__ == "__main__":
 	
+	np.random.seed(1)
 	# Independent Datasets
-	X = np.random.rand(3000,200)
-	Y = np.random.rand(3000,200)
+	X = np.random.rand(10000,256) * 1
+	index_zero = np.squeeze(np.floor( np.random.rand(1,10)*10 )).astype(int)
+	#X[index_zero] = 0.0
+	Y = np.random.rand(10000,786) * 1
 
 	(I,G) = EDGE(X,Y) # Estimated Mutual Information between X and Y using EDGE method
 	print ('Independent Datasets: ', I,G)
 
-	# Dependent Datasets
-	X = np.random.rand(1000,2)
-	Y = X + np.random.rand(1000,2)
-
-	I = EDGE(X,Y) # Estimated Mutual Information between X and Y using EDGE method
-	print ('Dependent Datasets: ', I)
-
-	# Stronger dependency between datasets
-	X = np.random.rand(1000,2)
-	Y = X + np.random.rand(1000,2)/4
-
-	I = EDGE(X,Y) # Estimated Mutual Information between X and Y using EDGE method
-	print ('Stronger dependency between datasets: ',I)
-
-	# Large size independent datasets
-	
-	X = np.random.rand(5000,40)
-	Y = X**2 + np.random.rand(5000,40)/2
-
-	I = EDGE(X,Y) # Estimated Mutual Information between X and Y using EDGE method
-	print ('Large size independent datasets: ', I)
+#	# Dependent Datasets
+#	X = np.random.rand(1000,2)
+#	Y = X + np.random.rand(1000,2)
+#
+#	I = EDGE(X,Y) # Estimated Mutual Information between X and Y using EDGE method
+#	print ('Dependent Datasets: ', I)
+#
+#	# Stronger dependency between datasets
+#	X = np.random.rand(1000,2)
+#	Y = X + np.random.rand(1000,2)/4
+#
+#	I = EDGE(X,Y) # Estimated Mutual Information between X and Y using EDGE method
+#	print ('Stronger dependency between datasets: ',I)
+#
+#	# Large size independent datasets
+#	
+#	X = np.random.rand(5000,40)
+#	Y = X**2 + np.random.rand(5000,40)/2
+#
+#	I = EDGE(X,Y) # Estimated Mutual Information between X and Y using EDGE method
+#	print ('Large size independent datasets: ', I)
 
 
 

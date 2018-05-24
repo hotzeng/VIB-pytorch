@@ -96,8 +96,14 @@ class Solver(object):
                 index_x = index_x.int()
                 #x_sample = x[index_x.data.numpy().tolist()]
                 x_sample = x
-
                 z_sample = torch.normal(mu, std)
+
+                # Normalize the sample matrix
+                y = y.float() / y.max().float()
+                logit = logit.float() / logit.max().float()
+
+                x_sample = x_sample.float() / x_sample.max().float()
+                z_sample = z_sample.float() / z_sample.max().float()
 
                 # Redefine the losses with MI estimation by yuzeng
                 #class_loss = F.cross_entropy(logit,y).div(math.log(2))
@@ -115,12 +121,12 @@ class Solver(object):
                 self.toynet_ema.update(self.toynet.state_dict())
 
                 prediction = F.softmax(logit,dim=1).max(1)[1]
-                accuracy = torch.eq(prediction,y).float().mean()
+                accuracy = torch.eq(prediction.float(),y.float()).float().mean()
 
                 if self.num_avg != 0 :
                     _, avg_soft_logit = self.toynet(x,self.num_avg)
                     avg_prediction = avg_soft_logit.max(1)[1]
-                    avg_accuracy = torch.eq(avg_prediction,y).float().mean()
+                    avg_accuracy = torch.eq(avg_prediction.float(), y.float()).float().mean()
                 else : avg_accuracy = Variable(cuda(torch.zeros(accuracy.size()), self.cuda))
 
                 if self.global_iter % 100 == 0 :
