@@ -108,6 +108,12 @@ class Solver(object):
 
                 # Redefine the losses with MI estimation by yuzeng
                 #class_loss = F.cross_entropy(logit,y).div(math.log(2))
+                #info_size_0 = z_sample.shape[0] 
+                #info_size_1 = z_sample.shape[1] 
+                #class_size_0 = x.shape[0] 
+                #class_size_1 = x.shape[1] 
+                #info_edge = EDGE((info_size_0, info_size_1))
+                #class_edge = EDGE((class_size_0, class_size_1))
                 info_loss = EDGE.apply(z_sample, x_sample)
                 class_loss = EDGE.apply(logit, y)
                 #info_loss = -0.5*(1+2*std.log()-mu.pow(2)-std.pow(2)).sum(1).mean().div(math.log(2))
