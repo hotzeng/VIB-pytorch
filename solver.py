@@ -79,6 +79,7 @@ class Solver(object):
     def train(self):
         self.set_mode('train')
         for e in range(self.epoch) :
+            print("epoch:", e)
             self.global_epoch += 1
 
             for idx, (images,labels) in enumerate(self.data_loader['train']):
@@ -116,7 +117,7 @@ class Solver(object):
                 izx_bound = info_loss
 
                 self.optim.zero_grad()
-                total_loss.backward()
+                total_loss.cpu().backward()
                 self.optim.step()
                 self.toynet_ema.update(self.toynet.state_dict())
 

@@ -13,20 +13,29 @@ import math
 import pdb
 import cvxpy as cvx # Need to install CVXPY package 
 import torch
+from time import gmtime, strftime
+from datetime import datetime
+
 
 class EDGE(torch.autograd.Function):
 
     @staticmethod    
     def forward(ctx, X, Y):
 
+        print("Begin forward: ")
+        str(datetime.now())
+
         device = torch.device("cpu")
         dtype = torch.float
 
-        X = X.data.numpy()
-        Y = Y.data.numpy()
+        X = X.cpu().data.numpy()
+        Y = Y.cpu().data.numpy()
 
         # Return the normalizing factor of epsilon regarding STD and some randomness
         def gen_eps(X,Y):
+        
+            print("     Begin gen_eps:")
+            strftime("      %Y-%m-%d %H:%M:%S", gmtime())
         
             # Parameter: range of random epsilon coefficient:
             eps_l, eps_u = 0.7, 1.8
@@ -52,9 +61,9 @@ class EDGE(torch.autograd.Function):
 
             # Random Shifts, changed by yueng
             Tx = np.random.rand(1,dim_X)
-            b_X = 10.0*Tx[0]*eps_X
+            b_X = 1.0*Tx[0]*eps_X
             Ty = np.random.rand(1,dim_Y)
-            b_Y = 10.0*Ty[0]*eps_Y
+            b_Y = 1.0*Ty[0]*eps_Y
             
             return (eps_X,eps_Y,b_X,b_Y)
         
@@ -63,6 +72,7 @@ class EDGE(torch.autograd.Function):
             # Compute X_tilde, the mappings of X using H_1 (floor function)
             #if abs(eps).min() == 0:
             #    raise ValueError('Error: The norm of eps is 0', eps) 
+         
             nonzero = eps > 0
             X_te = 1.0*(X[nonzero]+b[nonzero])/eps[nonzero]
             X_t = np.floor(X_te)
@@ -72,6 +82,8 @@ class EDGE(torch.autograd.Function):
         # Compuate Hashing: Compute the number of collisions in each bucket
         def Hash(X,Y,t_m,eps_X,eps_Y,b_X,b_Y,Ni_max):
         
+            print("	Begin Hash:")
+            strftime("	    %Y-%m-%d %H:%M:%S", gmtime())
             # Num of Samples
             N = X.shape[0]
             
@@ -114,6 +126,8 @@ class EDGE(torch.autograd.Function):
         
         def find_interval(X,Y, eps_X_temp,eps_Y_temp,b_X_temp,b_Y_temp,t_l, t_u, Ni_max = 1):
         
+            print("	Begin find_interval:")
+            strftime("	    %Y-%m-%d %H:%M:%S", gmtime())
             # Num of Samples
             N = X.shape[0]
             
@@ -122,7 +136,7 @@ class EDGE(torch.autograd.Function):
             dim = dim_X + dim_Y
             
             # parameter: C_balance: Minimum ratio of number of distinct hashing (L_XY) with respect to max collision  
-            C_balance_l, C_balance_u = 0.7 , 1.5
+            C_balance_l, C_balance_u = 0.63 , 1.65
             
             # Find the appropriate interval
             f_l, f_u = 0, 3.0
@@ -130,15 +144,16 @@ class EDGE(torch.autograd.Function):
 
             # store the series of f_m, changed by yuzeng 
             f_m_list = []
+            t_m_list = []
             while  (f_l < C_balance_l)  or ( C_balance_u < f_u): 
                 # If cannot find the right interval make error
                 err +=1
-                if err > 190:
+                if err > 90:
                     a = 0
-                if err > 200:
+                if err > 100:
                     raise ValueError('Error: Correct interval cannot be found. Try modifying t_l and t_u', t_l,t_u) 
                 t_m = (t_u+t_l)/2
-                
+                t_m_list.append(t_m)
                 # Normalize epsilons
                 eps_X = eps_X_temp * 1.0*t_m / pow(N,1.0/(2*dim))
                 eps_Y = eps_Y_temp * 1.0*t_m / pow(N,1.0/(2*dim))
@@ -150,10 +165,10 @@ class EDGE(torch.autograd.Function):
                 f_m_list.append(f_m)
                 
                 not_in_interval = (f_l < C_balance_l) or (C_balance_u < f_u) 
-                if f_m < 0.75 and not_in_interval:
+                if f_m < 1 and not_in_interval:
                     t_l=t_m
                     f_l=f_m
-                elif f_m > 1.45 and not_in_interval:
+                elif f_m > 1 and not_in_interval:
                     t_u=t_m
                     f_u=f_m
             
@@ -162,6 +177,8 @@ class EDGE(torch.autograd.Function):
         # Compute mutual information and gradient given epsilons and radom shifts
         def Compute_MI(X,Y,U,t,eps_X,eps_Y,b_X,b_Y,Ni_min,Ni_max):
    
+            print("Begin Compute_MI:")
+            strftime("%Y-%m-%d %H:%M:%S", gmtime())
 	        # parameter: choose random r_grad form each bucket for grad computation
             r_grad = 1
 
@@ -190,6 +207,9 @@ class EDGE(torch.autograd.Function):
                     N_c+=Nij
             # Compute MI
             I = 1.0* I / N_c
+
+            print("I completed! Begin Grad_mat:")
+            strftime("%Y-%m-%d %H:%M:%S", gmtime())
             
            	## Compute gradient matrix (N by d)
 
@@ -294,6 +314,9 @@ class EDGE(torch.autograd.Function):
             	    # set all of the gradients corresponding to the nodes in bucket r
                     Grad_mat[r]=1.0*Grad_vec/N
             
+            print("Grad_mat completed!")
+            strftime("%Y-%m-%d %H:%M:%S", gmtime())
+
             return (I,Grad_mat)
         
         # Delta function used for estimation of gradient
@@ -324,7 +347,7 @@ class EDGE(torch.autograd.Function):
             
             # Num of Samples, increase t_u, changed by yuzeng
             N = X.shape[0]
-            t_l,t_u = 0.1, 200
+            t_l,t_u = 0.1, 2000
             
             # Use less number of samples for learning the interval
             N_t=1000
@@ -376,6 +399,8 @@ class EDGE(torch.autograd.Function):
         ##### Linear Program for Ensemble Estimation ####
         def compute_weights(L, d, T, N):
         	
+            print("     Begin compute_weights:")
+            strftime("      %Y-%m-%d %H:%M:%S", gmtime())
             # Correct T
             T = 1.0*T/T[0]
             
@@ -425,23 +450,28 @@ class EDGE(torch.autograd.Function):
             r = 5
             I_vec, Grad_vec = np.zeros(r), np.zeros((r,N,d))
             for i in range(r):
-        	    (I_vec[i], Grad_vec_temp) = EDGE_single_run(X,Y,U)
-        	    Grad_vec[i,:,:]=Grad_vec_temp
+                    print("Begin run %:", i)
+                    strftime("%Y-%m-%d %H:%M:%S", gmtime())
+                    (I_vec[i], Grad_vec_temp) = EDGE_single_run(X,Y,U)
+                    Grad_vec[i,:,:]=Grad_vec_temp
         
             I = np.mean(I_vec)
             Grad_mat= np.mean(Grad_vec,0)
             return (I,Grad_mat)
 
         I, Grad_mat = EDGE_top(X,Y)
-        I = torch.tensor(I, device=device, dtype=dtype, requires_grad=False)
-        Grad_mat = torch.tensor(Grad_mat, device=device, dtype=dtype, requires_grad=False)
+        I = torch.tensor(I, device=torch.device("cuda"), dtype=dtype, requires_grad=False)
+        Grad_mat = torch.tensor(Grad_mat, device=torch.device("cuda"), dtype=dtype, requires_grad=False)
         size = list(Y.shape)
-        Grad_Y = torch.zeros(size)
+        Grad_Y = torch.zeros(size, device=torch.device("cuda"), dtype=dtype, requires_grad=False)
         ctx.save_for_backward(Grad_mat, Grad_Y)
         return I
 
     @staticmethod    
     def backward(ctx, grad_I=1):
+
+        print("Begin backward:")
+        strftime("%Y-%m-%d %H:%M:%S", gmtime())
         grad_X, grad_Y = ctx.saved_tensors
         return (grad_X, grad_Y)
 
