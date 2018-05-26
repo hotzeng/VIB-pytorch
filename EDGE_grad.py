@@ -446,10 +446,8 @@ def EDGE_top(X,Y,U=20):
     pool.join()
 
     for i in range(r):
-            print("Begin run %:", i)
-            strftime("%Y-%m-%d %H:%M:%S", gmtime())
-            (I_vec[i], Grad_vec_temp) = EDGE_single_run(X,Y,U)
-            Grad_vec[i,:,:]=Grad_vec_temp
+        I_vec[i] = result[i][0]   
+        Grad_vec[i,:,:] = result[i][1]
 
     I = np.mean(I_vec)
     Grad_mat= np.mean(Grad_vec,0)
