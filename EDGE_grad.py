@@ -21,8 +21,8 @@ from functools import partial
 
 def gen_eps(X,Y):
 
-    print("     Begin gen_eps:")
-    strftime("      %Y-%m-%d %H:%M:%S", gmtime())
+    #print("     Begin gen_eps:")
+    #strftime("      %Y-%m-%d %H:%M:%S", gmtime())
 
     # Parameter: range of random epsilon coefficient:
     eps_l, eps_u = 0.7, 1.8
@@ -69,8 +69,8 @@ def H1(X,b,eps):
 # Compuate Hashing: Compute the number of collisions in each bucket
 def Hash(X,Y,t_m,eps_X,eps_Y,b_X,b_Y,Ni_max):
 
-    print("	Begin Hash:")
-    strftime("	    %Y-%m-%d %H:%M:%S", gmtime())
+    #print("	Begin Hash:")
+    #strftime("	    %Y-%m-%d %H:%M:%S", gmtime())
     # Num of Samples
     N = X.shape[0]
     
@@ -113,8 +113,8 @@ def Hash(X,Y,t_m,eps_X,eps_Y,b_X,b_Y,Ni_max):
 
 def find_interval(X,Y, eps_X_temp,eps_Y_temp,b_X_temp,b_Y_temp,t_l, t_u, Ni_max = 1):
 
-    print("	Begin find_interval:")
-    strftime("	    %Y-%m-%d %H:%M:%S", gmtime())
+    #print("	Begin find_interval:")
+    #strftime("	    %Y-%m-%d %H:%M:%S", gmtime())
     # Num of Samples
     N = X.shape[0]
     
@@ -164,8 +164,8 @@ def find_interval(X,Y, eps_X_temp,eps_Y_temp,b_X_temp,b_Y_temp,t_l, t_u, Ni_max 
 # Compute mutual information and gradient given epsilons and radom shifts
 def Compute_MI(X,Y,U,t,eps_X,eps_Y,b_X,b_Y,Ni_min,Ni_max):
 
-    print("Begin Compute_MI:")
-    strftime("%Y-%m-%d %H:%M:%S", gmtime())
+    #print("Begin Compute_MI:")
+    #strftime("%Y-%m-%d %H:%M:%S", gmtime())
     # parameter: choose random r_grad form each bucket for grad computation
     r_grad = 1
 
@@ -195,7 +195,7 @@ def Compute_MI(X,Y,U,t,eps_X,eps_Y,b_X,b_Y,Ni_min,Ni_max):
     # Compute MI
     I = 1.0* I / N_c
 
-    print("I completed! Begin Grad_mat:")
+    #print("I completed! Begin Grad_mat:")
     strftime("%Y-%m-%d %H:%M:%S", gmtime())
     
    	## Compute gradient matrix (N by d)
@@ -301,7 +301,7 @@ def Compute_MI(X,Y,U,t,eps_X,eps_Y,b_X,b_Y,Ni_min,Ni_max):
     	    # set all of the gradients corresponding to the nodes in bucket r
             Grad_mat[r]=1.0*Grad_vec/N
     
-    print("Grad_mat completed!")
+    #print("Grad_mat completed!")
     strftime("%Y-%m-%d %H:%M:%S", gmtime())
 
     return (I,Grad_mat)
@@ -386,8 +386,8 @@ def EDGE_single_run(X,Y,U=20):
 ##### Linear Program for Ensemble Estimation ####
 def compute_weights(L, d, T, N):
 	
-    print("     Begin compute_weights:")
-    strftime("      %Y-%m-%d %H:%M:%S", gmtime())
+    #print("     Begin compute_weights:")
+    #strftime("      %Y-%m-%d %H:%M:%S", gmtime())
     # Correct T
     T = 1.0*T/T[0]
     
@@ -434,7 +434,7 @@ def EDGE_top(X,Y,U=20):
 
 	# Repeat for LSH with different random parameters and Take mean: 
 	#	By increasing r you get more accurate estimate
-    r = 5
+    r = 4
     I_vec, Grad_vec = np.zeros(r), np.zeros((r,N,d))
 
     # Use multiprocess
@@ -482,8 +482,8 @@ class EDGE(torch.autograd.Function):
 
         # The following part should follow all the subfunctions
         I, Grad_mat = EDGE_top(X,Y)
-        #I = torch.tensor(I, device=torch.device("cuda"), dtype=dtype, requires_grad=False)
-        #Grad_mat = torch.tensor(Grad_mat, device=torch.device("cuda"), dtype=dtype, requires_grad=False)
+        I = torch.tensor(I, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
+        Grad_mat = torch.tensor(Grad_mat, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
         size = list(Y.shape)
         Grad_Y = torch.zeros(size, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
         #self.Grad_mat = Grad_mat
@@ -496,7 +496,7 @@ class EDGE(torch.autograd.Function):
         print("Begin backward:")
         strftime("%Y-%m-%d %H:%M:%S", gmtime())
         grad_X, grad_Y = ctx.saved_tensors
-        return (grad_mat, grad_Y)
+        return (grad_X, grad_Y)
 
 
 

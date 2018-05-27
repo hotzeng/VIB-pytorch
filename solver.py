@@ -83,6 +83,7 @@ class Solver(object):
             self.global_epoch += 1
 
             for idx, (images,labels) in enumerate(self.data_loader['train']):
+                print(" Batch:", idx)
                 self.global_iter += 1
 
                 x = Variable(cuda(images, self.cuda))
