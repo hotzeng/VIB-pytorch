@@ -98,7 +98,7 @@ class Solver(object):
                 index_x = index_x.int()
                 #x_sample = x[index_x.data.numpy().tolist()]
                 x_sample = x
-                z_sample = torch.normal(torch.zeros(mu.shape[0]), torch.ones(std.shape[0])))
+                z_sample = torch.normal(torch.zeros(mu.shape), torch.ones(std.shape))
                 z_sample = z_sample * std + mu
             
 
