@@ -434,7 +434,7 @@ def EDGE_top(X,Y,U=20):
 
 	# Repeat for LSH with different random parameters and Take mean: 
 	#	By increasing r you get more accurate estimate
-    r = 4
+    r = 24
     I_vec, Grad_vec = np.zeros(r), np.zeros((r,N,d))
 
     # Use multiprocess
@@ -450,6 +450,7 @@ def EDGE_top(X,Y,U=20):
         Grad_vec[i,:,:] = result[i][1]
 
     I = np.mean(I_vec)
+    I = -1 * I
     Grad_mat= np.mean(Grad_vec,0)
     return (I,Grad_mat)
 
