@@ -434,7 +434,7 @@ def EDGE_top(X,Y,U=20):
 
 	# Repeat for LSH with different random parameters and Take mean: 
 	#	By increasing r you get more accurate estimate
-    r = 24
+    r = 3
     I_vec, Grad_vec = np.zeros(r), np.zeros((r,N,d))
 
     # Use multiprocess
@@ -483,7 +483,7 @@ class EDGE(torch.autograd.Function):
 
         # The following part should follow all the subfunctions
         I, Grad_mat = EDGE_top(X,Y)
-        I = torch.tensor(I, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
+        I = torch.tensor(I, device=torch.device("cpu"), dtype=dtype, requires_grad=True)
         Grad_mat = torch.tensor(Grad_mat, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
         size = list(Y.shape)
         Grad_Y = torch.zeros(size, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
@@ -494,9 +494,15 @@ class EDGE(torch.autograd.Function):
     @staticmethod    
     def backward(ctx, grad_I=1):
 
+        device = torch.device("cpu")
+        dtype = torch.float
+
         print("Begin backward:")
         strftime("%Y-%m-%d %H:%M:%S", gmtime())
         grad_X, grad_Y = ctx.saved_tensors
+        grad_X = torch.tensor(grad_X, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
+        grad_Y = torch.tensor(grad_Y, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
+        
         return (grad_X, grad_Y)
 
 
