@@ -141,7 +141,7 @@ class Solver(object):
                     avg_accuracy = torch.eq(avg_prediction.float(), y.float()).float().mean()
                 else : avg_accuracy = Variable(cuda(torch.zeros(accuracy.size()), self.cuda))
 
-                if self.global_iter % 100 == 0 :
+                if self.global_iter % 1 == 0 :
                     print('i:{} IZY:{:.2f} IZX:{:.2f}'
                             .format(idx+1, izy_bound.data[0], izx_bound.data[0]), end=' ')
                     print('acc:{:.4f} avg_acc:{:.4f}'
