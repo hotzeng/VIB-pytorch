@@ -101,12 +101,16 @@ class Solver(object):
                 z_sample = torch.normal(torch.zeros(mu.shape), torch.ones(std.shape))
                 mu.retain_grad()
                 std.retain_grad()
+                logit.retain_grad()
                 z_sample = z_sample * std + mu
+                z_sample.retain_grad()
             
 
                 # Normalize the sample matrix
                 y_norm = y.float() / y.max().float()
                 logit_norm = logit.float() / logit.max().float()
+                y_norm.retain_grad()
+                logit_norm.retain_grad()
 
                 #x_sample = x_sample.float() / x_sample.max().float()
                 #z_sample = z_sample.float() / z_sample.max().float()
@@ -123,9 +127,15 @@ class Solver(object):
                 class_loss = EDGE.apply(logit_norm, y_norm)
                 #info_loss = -0.5*(1+2*std.log()-mu.pow(2)-std.pow(2)).sum(1).mean().div(math.log(2))
                 total_loss = class_loss - self.beta*info_loss
+                total_loss.retain_grad()
+                info_loss.retain_grad()
+                class_loss.retain_grad()
 
                 izy_bound = - class_loss
                 izx_bound = - info_loss
+                
+                izy_bound.retain_grad()
+                izx_bound.retain_grad()
 
                 self.optim.zero_grad()
                 total_loss.cpu().backward()
