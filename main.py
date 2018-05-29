@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='TOY VIB')
     parser.add_argument('--epoch', default = 200, type=int, help='epoch size')
-    parser.add_argument('--lr', default = 1e-4, type=float, help='learning rate')
+    parser.add_argument('--lr', default = 1e-1, type=float, help='learning rate')
     parser.add_argument('--beta', default = 1e-3, type=float, help='beta')
     parser.add_argument('--K', default = 256, type=int, help='dimension of encoding Z')
     parser.add_argument('--seed', default = 1, type=int, help='random seed')

@@ -99,6 +99,8 @@ class Solver(object):
                 #x_sample = x[index_x.data.numpy().tolist()]
                 x_sample = x
                 z_sample = torch.normal(torch.zeros(mu.shape), torch.ones(std.shape))
+                mu.retain_grad()
+                std.retain_grad()
                 z_sample = z_sample * std + mu
             
 
