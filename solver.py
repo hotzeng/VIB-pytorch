@@ -196,13 +196,39 @@ class Solver(object):
             y = Variable(cuda(labels, self.cuda))
             (mu, std), logit = self.toynet_ema.model(x)
 
-            class_loss += F.cross_entropy(logit,y,size_average=False).div(math.log(2))
-            info_loss += -0.5*(1+2*std.log()-mu.pow(2)-std.pow(2)).sum().div(math.log(2))
+            #class_loss += F.cross_entropy(logit,y,size_average=False).div(math.log(2))
+            #info_loss += -0.5*(1+2*std.log()-mu.pow(2)-std.pow(2)).sum().div(math.log(2))
+            ############################################
+            # Sample x and z to estimate the mutual information, by yuzeng
+            N_x = x.shape[0]
+            x = x.view(N_x, -1)
+            D_x = x.shape[1]
+            index_x = torch.rand(self.batch_size) * float(N_x)
+            index_x = index_x.int()
+            #x_sample = x[index_x.data.numpy().tolist()]
+            x_sample = x
+            z_sample = torch.normal(torch.zeros(mu.shape), torch.ones(std.shape))
+            mu.retain_grad()
+            std.retain_grad()
+            z_sample = z_sample * std + mu
+            
+
+            # Normalize the sample matrix
+            y_norm = y.float() / y.max().float()
+            logit_norm = logit.float() / logit.max().float()
+
+            # Redefine the losses with MI estimation by yuzeng
+            info_loss = EDGE.apply(z_sample, x_sample)
+            class_loss = EDGE.apply(logit_norm, y_norm)
+
+
+            ############################################
+
             total_loss += class_loss + self.beta*info_loss
             total_num += y.size(0)
 
-            izy_bound += math.log(10,2) - class_loss
-            izx_bound += info_loss
+            izy_bound += - class_loss
+            izx_bound += - info_loss
 
             prediction = F.softmax(logit,dim=1).max(1)[1]
             correct += torch.eq(prediction,y).float().sum()

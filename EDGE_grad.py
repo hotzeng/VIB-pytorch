@@ -471,8 +471,8 @@ class EDGE(torch.autograd.Function):
     @staticmethod    
     def forward(ctx, X, Y):
 
-        print("Begin forward: ")
-        str(datetime.now())
+        #print("Begin forward: ")
+        #str(datetime.now())
 
         device = torch.device("cpu")
         dtype = torch.float
@@ -497,7 +497,7 @@ class EDGE(torch.autograd.Function):
         device = torch.device("cpu")
         dtype = torch.float
 
-        print("Begin backward:")
+        #print("Begin backward:")
         strftime("%Y-%m-%d %H:%M:%S", gmtime())
         grad_X, grad_Y = ctx.saved_tensors
         grad_X = torch.tensor(grad_X, device=torch.device("cpu"), dtype=dtype, requires_grad=False)
