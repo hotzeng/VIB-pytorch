@@ -122,7 +122,7 @@ class Solver(object):
                 info_loss = EDGE.apply(z_sample, x_sample)
                 class_loss = EDGE.apply(logit_norm, y_norm)
                 #info_loss = -0.5*(1+2*std.log()-mu.pow(2)-std.pow(2)).sum(1).mean().div(math.log(2))
-                total_loss = class_loss + self.beta*info_loss
+                total_loss = class_loss - self.beta*info_loss
 
                 izy_bound = - class_loss
                 izx_bound = - info_loss
@@ -224,7 +224,7 @@ class Solver(object):
 
             ############################################
 
-            total_loss += class_loss + self.beta*info_loss
+            total_loss += class_loss - self.beta*info_loss
             total_num += y.size(0)
 
             izy_bound += - class_loss
